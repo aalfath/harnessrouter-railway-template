@@ -56,24 +56,27 @@ if [ -z "${HARNESS_GLOBAL_CONCURRENCY:-}" ]; then
 fi
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-$(( cpus < 4 ? cpus : 4 ))}"
 export MALLOC_ARENA_MAX="${MALLOC_ARENA_MAX:-2}"
+export OPENCODE_DISABLE_MODELS_FETCH="${OPENCODE_DISABLE_MODELS_FETCH:-1}"
 export UV_THREADPOOL_SIZE="${UV_THREADPOOL_SIZE:-4}"
 log "sizing: ${cpus} CPU, ${mem_mb} MB RAM -> at most $HARNESS_GLOBAL_CONCURRENCY agent turn(s) at once (set HARNESS_GLOBAL_CONCURRENCY to change)"
-[ "$mem_mb" -lt 1000 ] && log "note: below 1 GB RAM only light agent turns fit; give the service 1 GB or more for Claude Code or Codex"
+[ "$mem_mb" -lt 1000 ] && log "note: below 1 GB RAM only the Pi agent fits; give the service 1 GB or more for OpenCode, Codex or Claude Code"
 
-# ── 4. Agent CLIs by volume size ───────────────────────────────────────────────────────────────
+# ── 4. Agent CLIs by RAM and volume size ─────────────────────────────────────────────────────
 # Upstream installs every agent CLI into the data volume on first start (its default set needs
-# several GB). A Free or Trial volume is 0.5 GB, so pick a set that fits, unless HR_BACKENDS is set.
+# several GB of disk). Measured on 0.41.26: a Pi turn peaks at about 215 MB, while OpenCode, Codex
+# and Claude Code need 1 GB of RAM or more. So a Free or Trial service (0.5 GB RAM, 0.5 GB volume)
+# gets Pi only, unless HR_BACKENDS is set.
 mkdir -p "$DATA_DIR"
 vol_mb="$(df -Pm "$DATA_DIR" 2>/dev/null | awk 'NR==2 {print $2}')"
 is_uint "$vol_mb" || vol_mb=0
 if [ -z "${HR_BACKENDS:-}" ]; then
-  if   [ "$vol_mb" -lt 1500 ];  then HR_BACKENDS="opencode"
-  elif [ "$vol_mb" -lt 4000 ];  then HR_BACKENDS="claude,codex,opencode,pi"
-  else HR_BACKENDS="claude,codex,hermes,pi,opencode"
+  if   [ "$mem_mb" -lt 1000 ] || [ "$vol_mb" -lt 1500 ]; then HR_BACKENDS="pi"
+  elif [ "$vol_mb" -lt 4000 ]; then HR_BACKENDS="pi,opencode,codex,claude"
+  else HR_BACKENDS="pi,opencode,codex,claude,hermes"
   fi
-  log "agents: ${vol_mb} MB volume -> HR_BACKENDS=$HR_BACKENDS (set HR_BACKENDS to choose your own)"
+  log "agents: ${mem_mb} MB RAM, ${vol_mb} MB volume -> HR_BACKENDS=$HR_BACKENDS (set HR_BACKENDS to choose your own)"
 else
-  log "agents: HR_BACKENDS=$HR_BACKENDS (set by you; volume ${vol_mb} MB)"
+  log "agents: HR_BACKENDS=$HR_BACKENDS (set by you; ${mem_mb} MB RAM, ${vol_mb} MB volume)"
 fi
 export HR_BACKENDS
 
