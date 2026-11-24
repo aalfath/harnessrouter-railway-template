@@ -69,8 +69,7 @@ is_uint "$vol_mb" || vol_mb=0
 if [ -z "${HR_BACKENDS:-}" ]; then
   if   [ "$vol_mb" -lt 1500 ];  then HR_BACKENDS="opencode"
   elif [ "$vol_mb" -lt 4000 ];  then HR_BACKENDS="claude,codex,opencode,pi"
-  elif [ "$vol_mb" -lt 20000 ]; then HR_BACKENDS="claude,codex,hermes,pi,opencode"
-  else HR_BACKENDS="claude,codex,hermes,pi,dsh,opencode,qwen,gemini,cline,omp"
+  else HR_BACKENDS="claude,codex,hermes,pi,opencode"
   fi
   log "agents: ${vol_mb} MB volume -> HR_BACKENDS=$HR_BACKENDS (set HR_BACKENDS to choose your own)"
 else
